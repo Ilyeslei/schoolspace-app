@@ -11,8 +11,8 @@ import WebKit
 import OSLog
 
 @MainActor
-final class SessionManager: ObservableObject {
-    static let shared = SessionManager()
+final class SessionManager: ObservableObject, Sendable {
+    nonisolated(unsafe) static let shared = SessionManager()
 
     @Published var currentSession: UserSession?
     @Published var isLoading = false
@@ -130,8 +130,8 @@ final class SessionManager: ObservableObject {
 // MARK: - Coordinateur WKWebView pour la connexion
 
 @MainActor
-final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-    static let shared = WebLoginCoordinator()
+final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, Sendable {
+    nonisolated(unsafe) static let shared = WebLoginCoordinator()
 
     private var continuation: CheckedContinuation<Bool, Error>?
     private var webView: WKWebView?
@@ -194,7 +194,7 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
     nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         Task { @MainActor in
             self.logger.error("Erreur chargement : \(error.localizedDescription)")
-            self.finishLogin(success: false, error: SchoolSpaceError.networkError(e
+            self.finishLogin(success: false, error: SchoolSpaceError.networkError(error))
         }
     }
 

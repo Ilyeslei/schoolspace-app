@@ -153,8 +153,8 @@ struct LocationPickerView: View {
 
             objc_setAssociatedObject(manager, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
-            if CLLocationManager().authorizationStatus == .authorizedWhenInUse ||
-               CLLocationManager().authorizationStatus == .authorizedAlways {
+            if manager.authorizationStatus == .authorizedWhenInUse ||
+               manager.authorizationStatus == .authorizedAlways {
                 manager.requestLocation()
             } else {
                 continuation.resume(throwing: SchoolSpaceError.locationPermissionDenied)

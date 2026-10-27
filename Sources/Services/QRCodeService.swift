@@ -190,19 +190,23 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
     // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-              metadataObject.type == .qr,
-              let stringValue = metadataObject.stringValue else { return }
+    nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+                  metadataObject.type == .qr,
+                  let stringValue = metadataObject.stringValue else { return }
 
-        captureSession.stopRunning()
-        completion?(.success(stringValue))
-        dismiss(animated: true)
+            self.captureSession.stopRunning()
+            self.completion?(.success(stringValue))
+            self.dismiss(animated: true)
+        }
     }
 }
 
 // MARK: - Vue overlay pour le cadre de visée
 
+@MainActor
 final class QRCodeOverlayView: UIView {
     private let cornerLength: CGFloat = 30
     private let cornerThickness: CGFloat = 4
