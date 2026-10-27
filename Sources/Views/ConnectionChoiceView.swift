@@ -10,7 +10,7 @@ import CoreLocation
 
 @MainActor
 final class LocationManager: NSObject, CLLocationManagerDelegate, ObservableObject, Sendable {
-    static let shared = LocationManager()
+    nonisolated(unsafe) static let shared = LocationManager()
 
     private let manager = CLLocationManager()
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined

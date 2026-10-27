@@ -12,7 +12,7 @@ import SwiftUI
 
 @MainActor
 final class QRCodeService: Sendable {
-    static let shared = QRCodeService()
+    nonisolated(unsafe) static let shared = QRCodeService()
 
     private init() {}
 

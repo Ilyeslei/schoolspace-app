@@ -213,7 +213,7 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
                    let establishmentId = body["establishmentId"] as? String,
                    let sessionToken = body["sessionToken"] as? String {
 
-                    let establishmentUrl = self.webView?.url?.absoluteString ?? ""
+                    let establishmentUrl = self.webView?.url.flatMap { $0.absoluteString } ?? ""
                     self.sessionManager.createSession(
                         userId: userId,
                         displayName: displayName,
@@ -377,10 +377,11 @@ final class WebLoginViewController: UIViewController {
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        observation = webView.observe(\.estimatedProgress, options: .new) { [weak self] _, _ in
+        observation = webView.observe(\.estimatedProgress, options: .new) { [weak self] webView, _ in
             Task { @MainActor in
-                self?.progressView.progress = Float(self?.webView.estimatedProgress ?? 0)
-                self?.progressView.isHidden = (self?.webView.estimatedProgress ?? 0) >= 1.0
+                guard let self = self else { return }
+                self.progressView.progress = Float(webView.estimatedProgress)
+                self.progressView.isHidden = webView.estimatedProgress >= 1.0
             }
         }
     }

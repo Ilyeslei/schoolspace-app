@@ -10,7 +10,7 @@ import Security
 
 @MainActor
 final class KeychainService: Sendable {
-    static let shared = KeychainService()
+    nonisolated(unsafe) static let shared = KeychainService()
 
     private let serviceIdentifier = "com.example.schoolspace.session"
     private let accountName = "user_session"

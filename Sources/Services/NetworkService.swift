@@ -10,7 +10,7 @@ import CoreLocation
 
 @MainActor
 final class NetworkService: Sendable {
-    static let shared = NetworkService()
+    nonisolated(unsafe) static let shared = NetworkService()
 
     private let educationAPIBase = "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre/records"
     private let session = URLSession.shared
