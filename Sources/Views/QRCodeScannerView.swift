@@ -75,7 +75,7 @@ struct QRCodeScannerView: View {
                 Spacer()
 
                 VStack(spacing: 16) {
-                    Image(syste
+                    Image(systemName: "qrcode.viewfinder")
                         .font(.system(size: 48, weight: .light))
                         .foregroundStyle(Color("AccentColor"))
 

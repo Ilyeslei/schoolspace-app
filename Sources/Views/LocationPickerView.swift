@@ -245,6 +245,7 @@ struct SchoolRowView: View {
     }
 }
 
+@MainActor
 private class LocationDelegate: NSObject, CLLocationManagerDelegate {
     let completion: (Result<CLLocation, Error>) -> Void
 

@@ -188,16 +188,14 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
     // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
-    nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        Task { @MainActor in
-            guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-                  metadataObject.type == .qr,
-                  let stringValue = metadataObject.stringValue else { return }
+    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+        guard let metadataObject = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+              metadataObject.type == .qr,
+              let stringValue = metadataObject.stringValue else { return }
 
-            captureSession.stopRunning()
-            completion?(.success(stringValue))
-            dismiss(animated: true)
-        }
+        captureSession.stopRunning()
+        completion?(.success(stringValue))
+        dismiss(animated: true)
     }
 }
 
