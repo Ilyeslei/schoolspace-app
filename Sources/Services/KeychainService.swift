@@ -1,15 +1,15 @@
-//
+﻿//
 //  KeychainService.swift
 //  SchoolSpaceApp
 //
 //  Gestion sécurisée du Keychain iOS pour stocker les tokens de session
-//  Protection maximale : kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 //
 
 import Foundation
 import Security
 
-final class KeychainService {
+@MainActor
+final class KeychainService: Sendable {
     static let shared = KeychainService()
 
     private let serviceIdentifier = "com.example.schoolspace.session"
@@ -30,7 +30,6 @@ final class KeychainService {
             kSecValueData as String: data
         ]
 
-        // Supprimer l'existant s'il y en a un
         SecItemDelete(query as CFDictionary)
 
         let status = SecItemAdd(query as CFDictionary, nil)

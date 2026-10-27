@@ -1,9 +1,8 @@
-//
+﻿//
 //  URLEntryView.swift
 //  SchoolSpaceApp
 //
 //  Vue pour saisir manuellement l'URL de l'établissement
-//  Validation HTTPS, nettoyage, test de joignabilité
 //
 
 import SwiftUI
@@ -22,13 +21,10 @@ struct URLEntryView: View {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
-        // Doit commencer par http:// ou https://
         guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return false }
 
-        // Doit contenir index-education.net
         guard trimmed.contains(".index-education.net") else { return false }
 
-        // Validation URL basique
         guard let url = URL(string: trimmed), url.host != nil else { return false }
 
         return true
@@ -43,7 +39,6 @@ struct URLEntryView: View {
                 ScrollView {
                     GlassContainer {
                         VStack(spacing: 28) {
-                            // Icône et titre
                             VStack(spacing: 16) {
                                 ZStack {
                                     Circle()
@@ -70,7 +65,6 @@ struct URLEntryView: View {
                             }
                             .padding(.top, 20)
 
-                            // Champ de saisie
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Adresse de l'établissement")
                                     .font(.system(size: 14, weight: .medium))
@@ -89,7 +83,6 @@ struct URLEntryView: View {
                             }
                             .padding(.horizontal, 20)
 
-                            // Aide
                             VStack(spacing: 8) {
                                 Label("L'URL doit contenir .index-education.net", systemImage: "info.circle")
                                 Label("Le https:// est obligatoire", systemImage: "lock.fill")
@@ -99,7 +92,6 @@ struct URLEntryView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 20)
 
-                            // Bouton continuer
                             PrimaryGlassButton(
                                 title: isValidating ? "Vérification..." : "Continuer",
                                 icon: "arrow.right",
@@ -155,12 +147,14 @@ struct URLEntryView: View {
 
                     Task {
                         do {
-                            try await sessionManager.login(at: loginURL.absoluteString)
+                            try await sessionManager.login(at: loginURL)
                         } catch {
                             await MainActor.run {
                                 errorMessage = error.localizedDescription
                                 showError = true
                             }
+                        }
+                    }
                         }
                     }
                 }

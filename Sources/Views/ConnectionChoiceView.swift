@@ -1,14 +1,37 @@
-//
+﻿//
 //  ConnectionChoiceView.swift
 //  SchoolSpaceApp
 //
 //  Écran 1 : Choix de la méthode de connexion
-//  "Comment souhaitez-vous vous connecter à votre espace personnel ?"
-//  3 boutons : QR Code, Géolocalisation, Saisir l'URL
 //
 
 import SwiftUI
 import CoreLocation
+
+@MainActor
+final class LocationManager: NSObject, CLLocationManagerDelegate, ObservableObject, Sendable {
+    static let shared = LocationManager()
+
+    private let manager = CLLocationManager()
+    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+
+    private override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        authorizationStatus = manager.authorizationStatus
+    }
+
+    func requestWhenInUseAuthorization() {
+        manager.requestWhenInUseAuthorization()
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            self.authorizationStatus = manager.authorizationStatus
+        }
+    }
+}
 
 struct ConnectionChoiceView: View {
     @EnvironmentObject var sessionManager: SessionManager
@@ -21,14 +44,12 @@ struct ConnectionChoiceView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Fond système sombre
                 Color(.systemBackground)
                     .ignoresSafeArea()
 
                 ScrollView {
                     GlassContainer {
-                        VStack(spacing: 28) {
-                            // Titre principal
+                        VStack(
                             VStack(spacing: 10) {
                                 Text("Comment souhaitez-vous vous connecter à votre espace personnel ?")
                                     .font(.system(size: 24, weight: .bold))
@@ -44,9 +65,7 @@ struct ConnectionChoiceView: View {
                             }
                             .padding(.top, 40)
 
-                            // 3 boutons de connexion
                             VStack(spacing: 16) {
-                                // 1. QR Code
                                 GlassButton(
                                     icon: "qrcode.viewfinder",
                                     title: "Avec un QR code",
@@ -55,8 +74,7 @@ struct ConnectionChoiceView: View {
                                     showQRScanner = true
                                 }
 
-                                // 2. Géolocalisation
-                                GlassButton(
+
                                     icon: "location.fill",
                                     title: "Avec la géolocalisation",
                                     subtitle: "Trouvez les établissements près de chez vous"
@@ -64,7 +82,6 @@ struct ConnectionChoiceView: View {
                                     requestLocationPermission()
                                 }
 
-                                // 3. URL manuelle
                                 GlassButton(
                                     icon: "link",
                                     title: "Saisir l'URL de votre espace",
@@ -83,7 +100,6 @@ struct ConnectionChoiceView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
-            // Sheets
             .sheet(isPresented: $showQRScanner) {
                 QRCodeScannerView()
             }
@@ -104,16 +120,12 @@ struct ConnectionChoiceView: View {
         }
     }
 
-    // MARK: - Actions
-
     private func requestLocationPermission() {
         let status = CLLocationManager().authorizationStatus
 
         switch status {
         case .notDetermined:
-            // Demander la permission
             LocationManager.shared.requestWhenInUseAuthorization()
-            // Attendre un peu puis ouvrir le picker
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 showLocationPicker = true
             }
@@ -134,34 +146,6 @@ struct ConnectionChoiceView: View {
         }
     }
 }
-
-// MARK: - Gestionnaire de localisation simple
-
-final class LocationManager: NSObject, CLLocationManagerDelegate, ObservableObject {
-    static let shared = LocationManager()
-
-    private let manager = CLLocationManager()
-    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
-
-    private override init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        authorizationStatus = manager.authorizationStatus
-    }
-
-    func requestWhenInUseAuthorization() {
-        manager.requestWhenInUseAuthorization()
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        DispatchQueue.main.async {
-            self.authorizationStatus = manager.authorizationStatus
-        }
-    }
-}
-
-// MARK: - Preview
 
 #Preview {
     ConnectionChoiceView()

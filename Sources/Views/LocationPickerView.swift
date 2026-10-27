@@ -1,9 +1,8 @@
-//
+﻿//
 //  LocationPickerView.swift
 //  SchoolSpaceApp
 //
 //  Vue pour choisir un établissement via la géolocalisation
-//  Affiche la liste des établissements proches triés par distance
 //
 
 import SwiftUI
@@ -58,8 +57,6 @@ struct LocationPickerView: View {
         }
     }
 
-    // MARK: - Vues
-
     private var loadingView: some View {
         VStack(spacing: 20) {
             ProgressView()
@@ -111,25 +108,20 @@ struct LocationPickerView: View {
         }
     }
 
-    // MARK: - Actions
-
     private func loadNearbySchools() async {
         isLoading = true
         errorMessage = nil
 
         do {
-            // Obtenir la position actuelle
             let location = try await getCurrentLocation()
             userLocation = location
 
-            // Rechercher les établissements proches
             let fetchedSchools = try await NetworkService.shared.fetchNearbySchools(
                 latitude: location.coordinate.latitude,
                 longitude: location.coordinate.longitude,
                 radiusKm: 15
             )
 
-            // Calculer les distances et trier
             var schoolsWithDistance = fetchedSchools
             for i in schoolsWithDistance.indices {
                 schoolsWithDistance[i].updateDistance(from: location)
@@ -159,7 +151,6 @@ struct LocationPickerView: View {
             }
             manager.delegate = delegate
 
-            // Garder une référence forte au delegate
             objc_setAssociatedObject(manager, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
             if CLLocationManager().authorizationStatus == .authorizedWhenInUse ||
@@ -177,7 +168,7 @@ struct LocationPickerView: View {
         Task {
             do {
                 let loginURL = try await NetworkService.shared.validateEstablishmentURL(school.url)
-                try await sessionManager.login(at: loginURL.absoluteString)
+                try await sessionManager.login(at: loginURL)
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
@@ -192,8 +183,6 @@ struct LocationPickerView: View {
     }
 }
 
-// MARK: - Ligne établissement
-
 struct SchoolRowView: View {
     let school: School
     let action: () -> Void
@@ -201,7 +190,6 @@ struct SchoolRowView: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
-                // Icône établissement
                 ZStack {
                     Circle()
                         .fill(Color("AccentColor").opacity(0.15))
@@ -212,7 +200,6 @@ struct SchoolRowView: View {
                         .foregroundStyle(Color("AccentColor"))
                 }
 
-                // Infos établissement
                 VStack(alignment: .leading, spacing: 4) {
                     Text(school.name)
                         .font(.system(size: 16, weight: .semibold))
@@ -257,8 +244,6 @@ struct SchoolRowView: View {
         }
     }
 }
-
-// MARK: - Delegate localisation
 
 private class LocationDelegate: NSObject, CLLocationManagerDelegate {
     let completion: (Result<CLLocation, Error>) -> Void

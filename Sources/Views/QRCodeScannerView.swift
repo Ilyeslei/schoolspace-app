@@ -1,9 +1,8 @@
-//
+﻿//
 //  QRCodeScannerView.swift
 //  SchoolSpaceApp
 //
 //  Vue pour scanner un QR code d'établissement
-//  Inclut la saisie du PIN à 4 chiffres pour le déchiffrement
 //
 
 import SwiftUI
@@ -15,11 +14,10 @@ struct QRCodeScannerView: View {
 
     @State private var scannedCode: String?
     @State private var showPINEntry = false
-    @State private var pinCode = ""
+    @State private var pinDigits: [String] = Array(repeating: "", count: 4)
     @State private var isProcessing = false
     @State private var errorMessage: String?
     @State private var showError = false
-    @State private var pinDigits: [String] = Array(repeating: "", count: 4)
     @FocusState private var focusedField: Int?
 
     var body: some View {
@@ -29,10 +27,8 @@ struct QRCodeScannerView: View {
                     .ignoresSafeArea()
 
                 if showPINEntry {
-                    // Écran saisie PIN
                     pinEntryView
                 } else {
-                    // Écran scanner
                     scannerView
                 }
             }
@@ -50,14 +46,12 @@ struct QRCodeScannerView: View {
                     if errorMessage?.contains("PIN") == true {
                         // Revenir à la saisie PIN
                     } else {
-                        // Revenir au scanner
                         scannedCode = nil
                         showPINEntry = false
                     }
                 }
                 Button("Réessayer", role: .none) {
                     if errorMessage?.contains("PIN") == true {
-                        pinCode = ""
                         pinDigits = Array(repeating: "", count: 4)
                         focusedField = 0
                     } else {
@@ -70,22 +64,18 @@ struct QRCodeScannerView: View {
         }
     }
 
-    // MARK: - Vue Scanner
-
     private var scannerView: some View {
         ZStack {
-            // Scanner UIKit via UIViewRepresentable
-            QRScannerRepresentable { result in
+            QRScannerView { result in
                 handleScanResult(result)
             }
             .ignoresSafeArea()
 
-            // Overlay instructions
             VStack {
                 Spacer()
 
                 VStack(spacing: 16) {
-                    Image(systemName: "qrcode.viewfinder")
+                    Image(syste
                         .font(.system(size: 48, weight: .light))
                         .foregroundStyle(Color("AccentColor"))
 
@@ -105,13 +95,10 @@ struct QRCodeScannerView: View {
         }
     }
 
-    // MARK: - Vue Saisie PIN
-
     private var pinEntryView: some View {
         VStack(spacing: 32) {
             Spacer()
 
-            // Icône et titre
             VStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -136,7 +123,6 @@ struct QRCodeScannerView: View {
                 }
             }
 
-            // 4 champs PIN
             HStack(spacing: 12) {
                 ForEach(0..<4, id: \.self) { index in
                     PINField(
@@ -148,7 +134,6 @@ struct QRCodeScannerView: View {
                 }
             }
 
-            // Bouton valider
             PrimaryGlassButton(
                 title: isProcessing ? "Vérification..." : "Valider",
                 isLoading: isProcessing,
@@ -160,11 +145,9 @@ struct QRCodeScannerView: View {
 
             Spacer()
 
-            // Lien retour
             Button("Revenir au scanner") {
                 showPINEntry = false
                 scannedCode = nil
-                pinCode = ""
                 pinDigits = Array(repeating: "", count: 4)
             }
             .font(.system(size: 15, weight: .medium))
@@ -176,8 +159,6 @@ struct QRCodeScannerView: View {
             focusedField = 0
         }
     }
-
-    // MARK: - Actions
 
     private func handleScanResult(_ result: Result<String, Error>) {
         switch result {
@@ -193,23 +174,21 @@ struct QRCodeScannerView: View {
     private func validatePIN() {
         guard let scannedCode = scannedCode else { return }
 
-        pinCode = pinDigits.joined()
+        let pinCode = pinDigits.joined()
         isProcessing = true
 
         Task {
             do {
                 let decoded = try QRCodeService.shared.decodeQRCode(scannedCode, pin: pinCode)
 
-                // Naviguer vers la page de connexion de l'établissement
                 await MainActor.run {
                     isProcessing = false
                     dismiss()
 
-                    // Lancer la connexion
                     Task {
                         do {
                             let loginURL = try await NetworkService.shared.validateEstablishmentURL(decoded.establishmentBaseURL)
-                            try await sessionManager.login(at: loginURL.absoluteString)
+                            try await sessionManager.login(at: loginURL)
                         } catch {
                             await MainActor.run {
                                 errorMessage = error.localizedDescription
@@ -231,8 +210,6 @@ struct QRCodeScannerView: View {
     }
 }
 
-// MARK: - Champ PIN individuel
-
 struct PINField: View {
     @Binding var text: String
     let isFocused: Bool
@@ -240,7 +217,7 @@ struct PINField: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(co
                 .strokeBorder(
                     isFocused ? Color("AccentColor") : Color(.separator),
                     lineWidth: isFocused ? 3 : 1
@@ -265,20 +242,3 @@ struct PINField: View {
         }
     }
 }
-
-// MARK: - Représentable pour le scanner QR UIKit
-
-struct QRScannerRepresentable: UIViewControllerRepresentable {
-    let completion: (Result<String, Error>) -> Void
-
-    func makeUIViewController(context: Context) -> QRScannerViewController {
-        let scanner = QRScannerViewController()
-        scanner.completion = completion
-        return scanner
-    }
-
-    func updateUIViewController(_ uiViewController: QRScannerViewController, context: Context) {}
-}
-
-// Note: QRScannerViewController est déjà défini dans QRCodeService.swift
-// (partagé pour éviter la duplication)

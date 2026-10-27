@@ -1,9 +1,8 @@
-//
+﻿//
 //  SessionManager.swift
 //  SchoolSpaceApp
 //
 //  Gestion de la session utilisateur : connexion, reconnexion automatique, déconnexion
-//  Utilise WKWebView pour la page de connexion, détection automatique de succès
 //
 
 import Foundation
@@ -24,7 +23,6 @@ final class SessionManager: ObservableObject {
     private let logger = Logger(subsystem: "com.example.schoolspace", category: "SessionManager")
 
     private init() {
-        // Tentative de restauration de session au lancement
         Task {
             await restoreSession()
         }
@@ -40,7 +38,7 @@ final class SessionManager: ObservableObject {
 
         if session.isValid {
             logger.info("Session valide restaurée pour \(session.displayName)")
-            currentSession = session
+            currentSession = se
         } else if session.isExpired {
             logger.info("Session expirée, tentative de renouvellement")
             await tryRefreshSession(session)
@@ -52,14 +50,11 @@ final class SessionManager: ObservableObject {
 
     // MARK: - Connexion via WKWebView
 
-    /// Ouvre la page de connexion dans un navigateur intégré
-    /// Retourne l'URL de la page de connexion mobile
-    func login(at url: String) async throws -> URL {
+    func login(at url: String) async throws {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
-        // Construire l'URL de connexion mobile si ce n'est pas déjà fait
         let loginURL: URL
         if url.contains("mobile.") || url.contains("eleve.html") || url.contains("parent.html") {
             loginURL = URL(string: url)!
@@ -70,25 +65,18 @@ final class SessionManager: ObservableObject {
 
         logger.info("Ouverture page de connexion : \(loginURL.absoluteString)")
 
-        // Le WebLoginViewController gère la WKWebView et la détection de connexion
         let success = try await WebLoginCoordinator.shared.startLogin(at: loginURL)
 
         if success {
             logger.info("Connexion réussie détectée")
-            // La session a été créée dans le coordinator
-            if let session = currentSession {
-                return loginURL
-            }
+        } else {
+            throw SchoolSpaceError.loginFailed
         }
-
-        throw SchoolSpaceError.loginFailed
     }
 
     // MARK: - Renouvellement de session
 
-    private func tryRefreshSession(_ session: UserSession) async {
-        // TODO: Implémenter le renouvellement via refresh token si supporté
-        // Pour l'instant, on demande à l'utilisateur de se reconnecter
+    private func tryRefreshSess
         logger.warning("Renouvellement de session non implémenté, reconnexion requise")
         logout()
         showErrorMessage("Votre session a expiré. Veuillez vous reconnecter.")
@@ -96,9 +84,7 @@ final class SessionManager: ObservableObject {
 
     // MARK: - Création session après login réussi
 
-    /// Appelé par WebLoginCoordinator quand la connexion est détectée
     func createSession(userId: String, displayName: String, establishmentId: String, establishmentUrl: String, sessionToken: String) {
-        // Durée de session : 30 jours (à ajuster selon la durée réelle du cookie)
         let expiresAt = Date().addingTimeInterval(30 * 24 * 60 * 60)
 
         let session = UserSession(
@@ -157,7 +143,6 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
         super.init()
     }
 
-    /// Lance le flux de connexion dans une WKWebView modale
     func startLogin(at url: URL) async throws -> Bool {
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
@@ -166,11 +151,9 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
     }
 
     private func presentWebView(with url: URL) {
-        // Configuration WKWebView
         let config = WKWebViewConfiguration()
         config.websiteDataStore = WKWebsiteDataStore.default()
 
-        // Injection de script pour détecter la connexion
         let script = WKUserScript(
             source: loginDetectionScript,
             injectionTime: .atDocumentEnd,
@@ -183,10 +166,8 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
         webView?.navigationDelegate = self
         webView?.allowsBackForwardNavigationGestures = true
 
-        // Charger l'URL
         webView?.load(URLRequest(url: url))
 
-        // Présenter en plein écran
         let navController = UINavigationController()
         navController.modalPresentationStyle = .fullScreen
         navController.view.backgroundColor = .systemBackground
@@ -204,68 +185,72 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
 
     // MARK: - WKNavigationDelegate
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        logger.debug("Page chargée : \(webView.url?.absoluteString ?? "inconnu")")
+    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task { @MainActor in
+            self.logger.debug("Page chargée : \(webView.url?.absoluteString ?? "inconnu")")
+        }
     }
 
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        logger.error("Erreur chargement : \(error.localizedDescription)")
-        finishLogin(success: false, error: SchoolSpaceError.networkError(error))
+    nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        Task { @MainActor in
+            self.logger.error("Erreur chargement : \(error.localizedDescription)")
+            self.finishLogin(success: false, error: SchoolSpaceError.networkError(e
+        }
     }
 
     // MARK: - WKScriptMessageHandler
 
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "loginObserver",
-              let body = message.body as? [String: Any],
-              let event = body["event"] as? String else { return }
+    nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        Task { @MainActor in
+            guard message.name == "loginObserver",
+                  let body = message.body as? [String: Any],
+                  let event = body["event"] as? String else { return }
 
-        switch event {
-        case "loginSuccess":
-            if let userId = body["userId"] as? String,
-               let displayName = body["displayName"] as? String,
-               let establishmentId = body["establishmentId"] as? String,
-               let sessionToken = body["sessionToken"] as? String {
+            switch event {
+            case "loginSuccess":
+                if let userId = body["userId"] as? String,
+                   let displayName = body["displayName"] as? String,
+                   let establishmentId = body["establishmentId"] as? String,
+                   let sessionToken = body["sessionToken"] as? String {
 
-                let establishmentUrl = webView.url?.absoluteString ?? ""
-                sessionManager.createSession(
-                    userId: userId,
-                    displayName: displayName,
-                    establishmentId: establishmentId,
-                    establishmentUrl: establishmentUrl,
-                    sessionToken: sessionToken
-                )
-                finishLogin(success: true)
+                    let establishmentUrl = self.webView?.url?.absoluteString ?? ""
+                    self.sessionManager.createSession(
+                        userId: userId,
+                        displayName: displayName,
+                        establishmentId: establishmentId,
+                        establishmentUrl: establishmentUrl,
+                        sessionToken: sessionToken
+                    )
+                    self.finishLogin(success: true)
+                }
+
+            case "loginError":
+                if let errorMsg = body["message"] as? String {
+                    self.logger.warning("Erreur login détectée : \(errorMsg)")
+                }
+
+            default:
+                break
             }
-
-        case "loginError":
-            if let errorMsg = body["message"] as? String {
-                logger.warning("Erreur login détectée : \(errorMsg)")
-            }
-
-        default:
-            break
         }
     }
 
     private func finishLogin(success: Bool, error: Error? = nil) {
-        hostViewController?.dismiss(animated: true) {
-            self.webView = nil
-            self.hostViewController = nil
+        hostViewController?.dismiss(animated: true) { [weak self] in
+            self?.webView = nil
+            self?.hostViewController = nil
 
             if success {
-                self.continuation?.resume(returning: true)
+                self?.continuation?.resume(returning: true)
             } else {
-                self.continuation?.resume(throwing: error ?? SchoolSpaceError.loginFailed)
+                self?.continuation?.resume(throwing: error ?? SchoolSpaceError.loginFailed)
             }
-            self.continuation = nil
+            self?.continuation = nil
         }
     }
 
     // MARK: - Script d'injection pour détecter la connexion
 
-    /// Ce script surveille la page pour détecter quand l'utilisateur est connecté
-    /// Il faut l'adapter selon la structure exacte de la page mobile.eleve.html
     private let loginDetectionScript = """
     (function() {
         'use strict';
@@ -277,25 +262,18 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
             });
         }
 
-        // Détection de connexion réussie
         function checkLoginState() {
-            // Recherche d'indices de connexion dans la page
-            // Ces sélecteurs sont à adapter selon le DOM réel de mobile.eleve.html
-
-            // 1. Chercher le nom de l'utilisateur dans l'en-tête
             const userNameEl = document.querySelector('.user-name, .header .name, [data-user-name], .welcome-message');
             if (userNameEl && userNameEl.textContent.trim()) {
-                // Chercher aussi l'ID établissement
                 const estabEl = document.querySelector('[data-establishment-id], .establishment-name');
                 const establishmentId = estabEl?.dataset?.establishmentId || estabEl?.textContent?.trim() || 'unknown';
 
-                // Récupérer le cookie de session
                 const cookies = document.cookie;
                 const sessionMatch = cookies.match(/sessionid=([^;]+)/i) || cookies.match(/PHPSESSID=([^;]+)/i) || cookies.match(/JSESSIONID=([^;]+)/i);
                 const sessionToken = sessionMatch ? sessionMatch[1] : cookies;
 
                 sendEvent('loginSuccess', {
-                    userId: 'current_user', // À extraire si possible
+                    userId: 'current_user',
                     displayName: userNameEl.textContent.trim(),
                     establishmentId: establishmentId,
                     sessionToken: sessionToken
@@ -303,10 +281,8 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
                 return true;
             }
 
-            // 2. Vérifier la présence d'éléments post-connexion
             const postLoginElements = document.querySelectorAll('.main-content, .dashboard, .notes-container, .emploi-temps, .cahier-textes');
             if (postLoginElements.length > 0) {
-                // Utilisateur probablement connecté
                 const sessionToken = document.cookie;
                 sendEvent('loginSuccess', {
                     userId: 'current_user',
@@ -320,10 +296,8 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
             return false;
         }
 
-        // Vérification initiale
         if (checkLoginState()) return;
 
-        // Observer les mutations du DOM (connexion dynamique)
         const observer = new MutationObserver((mutations) => {
             if (checkLoginState()) {
                 observer.disconnect();
@@ -336,7 +310,6 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
             characterData: true
         });
 
-        // Aussi vérifier périodiquement (fallback)
         const interval = setInterval(() => {
             if (checkLoginState()) {
                 clearInterval(interval);
@@ -344,7 +317,6 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
             }
         }, 2000);
 
-        // Nettoyage au déchargement
         window.addEventListener('beforeunload', () => {
             clearInterval(interval);
             observer.disconnect();
@@ -355,9 +327,11 @@ final class WebLoginCoordinator: NSObject, WKNavigationDelegate, WKScriptMessage
 
 // MARK: - Vue contrôleur pour WKWebView
 
-class WebLoginViewController: UIViewController {
+@MainActor
+final class WebLoginViewController: UIViewController {
     let webView: WKWebView
     private var progressView: UIProgressView!
+    private var observation: NSKeyValueObservation?
 
     init(webView: WKWebView) {
         self.webView = webView
@@ -367,12 +341,14 @@ class WebLoginViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
 
-        // Barre de navigation minimaliste
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             title: "Annuler",
             style: .plain,
@@ -380,14 +356,12 @@ class WebLoginViewController: UIViewController {
             action: #selector(cancelTapped)
         )
 
-        // Barre de progression
         progressView = UIProgressView(progressViewStyle: .bar)
         progressView.progressTintColor = UIColor(named: "AccentColor") ?? .systemGreen
         progressView.trackTintColor = .clear
         progressView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(progressView)
 
-        // WebView
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
 
@@ -403,23 +377,19 @@ class WebLoginViewController: UIViewController {
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Observer la progression
-        webView.addObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: .new, context: nil)
-    }
-
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "estimatedProgress" {
-            progressView.progress = Float(webView.estimatedProgress)
-            progressView.isHidden = webView.estimatedProgress >= 1.0
+        observation = webView.observe(\.estimatedProgress, options: .new) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.progressView.progress = Float(self?.webView.estimatedProgress ?? 0)
+                self?.progressView.isHidden = (self?.webView.estimatedProgress ?? 0) >= 1.0
+            }
         }
     }
 
     @objc private func cancelTapped() {
-        // Le coordinator gère l'annulation
         dismiss(animated: true)
     }
 
     deinit {
-        webView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress))
+        observation?.invalidate()
     }
 }

@@ -1,21 +1,18 @@
-//
+﻿//
 //  NetworkService.swift
 //  SchoolSpaceApp
 //
 //  Services réseau : géolocalisation établissements, validation URL, etc.
-//  Utilise l'API officielle data.education.gouv.fr et le backend Index Éducation
 //
 
 import Foundation
 import CoreLocation
 
-final class NetworkService {
+@MainActor
+final class NetworkService: Sendable {
     static let shared = NetworkService()
 
-    // URLs des APIs
     private let educationAPIBase = "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-adresse-et-geolocalisation-etablissements-premier-et-second-degre/records"
-    private let indexEducationGeoBase = "https://www.index-education.net" // À confirmer, fallback sur pronote-lib
-
     private let session = URLSession.shared
     private let decoder = JSONDecoder()
 
@@ -25,8 +22,6 @@ final class NetworkService {
 
     // MARK: - Recherche établissements par géolocalisation
 
-    /// Récupère les établissements proches via l'API officielle du Ministère
-    /// Point d'entrée : data.education.gouv.fr avec paramètre geosearch
     func fetchNearbySchools(latitude: Double, longitude: Double, radiusKm: Double = 10) async throws -> [School] {
         let distanceMeters = Int(radiusKm * 1000)
         let geosearch = "\(latitude),\(longitude),\(distanceMeters)"
@@ -67,13 +62,9 @@ final class NetworkService {
 
             let apiResponse = try decoder.decode(EducationAPIResponse.self, from: data)
 
-            // Convertir en objets School avec construction de l'URL Index Éducation
             return apiResponse.results.compactMap { record in
                 guard !record.numeroUai.isEmpty else { return nil }
-
-                // L'URL standard Index Éducation : https://<UAI>.index-education.net/pronote/
                 let baseURL = "https://\(record.numeroUai.lowercased()).index-education.net/pronote/"
-
                 return School(
                     id: record.numeroUai,
                     name: record.appellationOfficielle,
@@ -150,23 +141,17 @@ final class NetworkService {
 
     // MARK: - Validation URL établissement
 
-    /// Vérifie qu'une URL correspond à un établissement Index Éducation valide
-    /// et récupère l'URL de la page de connexion mobile
     func validateEstablishmentURL(_ urlString: String) async throws -> String {
-        // Normaliser l'URL
         let normalized = normalizeURL(urlString)
 
-        // Vérifier le format
         guard normalized.hasPrefix("https://"),
               normalized.contains(".index-education.net") else {
             throw SchoolSpaceError.invalidURL(urlString)
         }
 
-        // Construire l'URL de la page de connexion mobile
         let baseURL = extractBaseURL(from: normalized)
         let loginURL = baseURL + "mobile.eleve.html"
 
-        // Tester que l'URL répond (HEAD request)
         var request = URLRequest(url: URL(string: loginURL)!)
         request.httpMethod = "HEAD"
         request.timeoutInterval = 10
@@ -190,12 +175,10 @@ final class NetworkService {
     private func normalizeURL(_ urlString: String) -> String {
         var url = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Ajouter https:// si absent
         if !url.hasPrefix("http://") && !url.hasPrefix("https://") {
             url = "https://" + url
         }
 
-        // Supprimer les slashes en trop à la fin
         while url.hasSuffix("/") && !url.hasSuffix("://") {
             url.removeLast()
         }
@@ -204,7 +187,6 @@ final class NetworkService {
     }
 
     private func extractBaseURL(from url: String) -> String {
-        // Extraire https://xxx.index-education.net/pronote/
         let pattern = #"(https://[^/]+\.index-education\.net/pronote/)"#
         if let regex = try? NSRegularExpression(pattern: pattern),
            let match = regex.firstMatch(in: url, range: NSRange(url.startIndex..., in: url)),
