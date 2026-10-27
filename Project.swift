@@ -1,5 +1,4 @@
-// SchoolSpaceApp - Project configuration
-// Ne pas modifier directement, utilisez Xcode pour gérer le projet
+﻿// swift-tools-version: 6.0
 
 import PackageDescription
 
