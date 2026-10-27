@@ -116,16 +116,18 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         if captureSession?.isRunning == false {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                self?.captureSession.startRunning()
+            Task { @MainActor in
+                self.captureSession?.startRunning()
             }
         }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if captureSession?.isRunning == true {
-            captureSession.stopRunning()
+        Task { @MainActor in
+            if self.captureSession?.isRunning == true {
+                self.captureSession.stopRunning()
+            }
         }
     }
 
